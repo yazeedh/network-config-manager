@@ -1,0 +1,63 @@
+name: Configuration Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: List configuration files
+        run: |
+          echo "=== Configuration Templates ==="
+          ls -la templates/
+          echo ""
+          echo "=== Configuration Files ==="
+          ls -la configs/ || echo "No configs yet"
+      
+      - name: Validate configuration templates
+        run: |
+          echo "Validating configuration templates..."
+          for config in templates/*.conf; do
+            if [ -f "$config" ]; then
+              echo "Checking $config..."
+              if grep -q "hostname" "$config" && grep -q "enable secret" "$config"; then
+                echo "✅ $config passed basic validation"
+              else
+                echo "❌ $config failed validation"
+                exit 1
+              fi
+            fi
+          done
+          echo "All configuration templates validated successfully!"
+      
+      - name: Check for required files
+        run: |
+          echo "Checking for required project files..."
+          required_files=("README.md" ".gitignore" "requirements.txt")
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file is missing"
+              exit 1
+            fi
+          done
+          echo "All required files present!"
